@@ -5,3 +5,4 @@ google-genai
 reportlab
 requests
 pydantic
+aiohttp
