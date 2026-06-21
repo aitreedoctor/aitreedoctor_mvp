@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AITreeDoctor - 수목 진단서 및 처방전 공유</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 공유 상세 화면 전용 스타일 오버라이드 (인쇄 최적화 및 페이퍼 룩) */
+        body {
+            background-color: #F7FAFC;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .share-container {
+            width: 100%;
+            max-width: 800px;
+            background-color: #FFFFFF;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            padding: 40px;
+            position: relative;
+        }
+
+        .share-actions-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+        }
+
+        /* 수목처방전 법정양식 스타일 테두리 및 격자 */
+        .document-sheet {
+            border: 2px solid var(--primary);
+            padding: 30px;
+            border-radius: 4px;
+            position: relative;
+            background-color: #FFFFFF;
+        }
+
+        .doc-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .doc-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 2px;
+            border-bottom: 2px double var(--primary);
+            display: inline-block;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+        }
+
+        .doc-header p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .doc-section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--primary);
+            margin-top: 24px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--primary);
+            padding-left: 8px;
+        }
+
+        .doc-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        .doc-table th {
+            background-color: #F7FAFC;
+            font-weight: bold;
+            color: var(--text-main);
+            border: 1px solid #CBD5E0;
+            padding: 10px;
+            width: 120px;
+            text-align: center;
+        }
+
+        .doc-table td {
+            border: 1px solid #CBD5E0;
+            padding: 10px;
+            color: var(--text-main);
+        }
+
+        .pest-grid-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .pest-grid-table th {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            font-weight: bold;
+            border: 1px solid #CBD5E0;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .pest-grid-table td {
+            border: 1px solid #CBD5E0;
+            padding: 10px;
+            line-height: 1.4;
+        }
+
+        .stamp-row {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-top: 1px solid #CBD5E0;
+            padding-top: 20px;
+        }
+
+        .stamp-text {
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        .stamp-image-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+        }
+
+        .stamp-img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            opacity: 0.15;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .stamp-official-seal {
+            border: 2px solid var(--danger);
+            color: var(--danger);
+            font-size: 11px;
+            font-weight: bold;
+            padding: 6px;
+            border-radius: 4px;
+            text-align: center;
+            display: inline-block;
+            transform: rotate(-10deg);
+            background-color: rgba(239, 68, 68, 0.05);
+            position: absolute;
+            bottom: 10px;
+            right: 0;
+        }
+
+        .doc-notice {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 30px;
+            line-height: 1.5;
+        }
+
+        /* 인쇄 시 브라우저 헤더/푸터 및 공유 버튼 제외 */
+        @media print {
+            body {
+                background-color: #FFFFFF;
+                padding: 0;
+            }
+            .share-container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+            }
+            .share-actions-top, .share-buttons-bottom {
+                display: none !important;
+            }
+            .document-sheet {
+                border: 2px solid #000000;
+            }
+            .doc-header h1 {
+                color: #000000;
+                border-bottom: 2px double #000000;
+            }
+            .doc-section-title {
+                color: #000000;
+                border-left: 3px solid #000000;
+            }
+            .pest-grid-table th {
+                background-color: #F0F0F0 !important;
+                color: #000000 !important;
+            }
+        }
+
+        /* 📱 모바일 및 태블릿 대응 정밀 반응형 스타일 추가 */
+        @media screen and (max-width: 768px) {
+            body {
+                padding: 10px 5px;
+            }
+            .share-container {
+                padding: 15px 10px;
+                box-shadow: none;
+                border: none;
+                background-color: transparent;
+            }
+            .share-actions-top {
+                flex-direction: column;
+                gap: 12px;
+                align-items: stretch;
+                margin-bottom: 20px;
+                padding-bottom: 12px;
+            }
+            .share-actions-top div {
+                display: flex;
+                gap: 8px;
+                width: 100%;
+            }
+            .share-actions-top a, .share-actions-top div button {
+                flex: 1;
+                font-size: 11px;
+                padding: 10px;
+                text-align: center;
+                display: inline-flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .document-sheet {
+                padding: 20px 12px;
+                border: 1px solid var(--primary);
+                border-radius: 8px;
+            }
+            .doc-header h1 {
+                font-size: 20px;
+                letter-spacing: 1px;
+            }
+            
+            /* 기본 정보 테이블 스택 레이아웃 */
+            .doc-table {
+                display: block;
+                width: 100% !important;
+            }
+            .doc-table tbody, .doc-table tr {
+                display: block;
+                width: 100% !important;
+            }
+            .doc-table tr {
+                margin-bottom: 10px;
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                overflow: hidden;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            }
+            .doc-table th {
+                display: block;
+                width: 100% !important;
+                text-align: left;
+                background-color: #EDF2F7;
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
+                padding: 6px 12px;
+                font-size: 10.5px;
+                box-sizing: border-box;
+            }
+            .doc-table td {
+                display: block;
+                width: 100% !important;
+                border: none;
+                border-bottom: 1px dashed #EDF2F7;
+                padding: 10px 12px;
+                font-size: 13px;
+                background-color: #FFFFFF;
+                box-sizing: border-box;
+            }
+            .doc-table td:last-child {
+                border-bottom: none;
+            }
+
+            /* 처방 농약 내역 카드형 스택 레이아웃 */
+            .pest-grid-table {
+                display: block;
+                width: 100% !important;
+            }
+            .pest-grid-table thead {
+                display: none; /* 모바일 헤더 숨김 */
+            }
+            .pest-grid-table tbody, .pest-grid-table tr {
+                display: block;
+                width: 100% !important;
+            }
+            .pest-grid-table tr {
+                margin-bottom: 15px;
+                border: 1px solid #CBD5E0;
+                border-radius: 8px;
+                background-color: #FFFFFF;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+                overflow: hidden;
+            }
+            .pest-grid-table td {
+                display: flex !important;
+                justify-content: space-between;
+                align-items: center;
+                text-align: right;
+                border: none;
+                border-bottom: 1px dashed #E2E8F0;
+                padding: 10px 14px;
+                font-size: 12.5px;
+                box-sizing: border-box;
+                width: 100% !important;
+            }
+            .pest-grid-table td:last-child {
+                border-bottom: none;
+            }
+            .pest-grid-table td::before {
+                content: attr(data-label);
+                font-weight: 800;
+                color: var(--primary);
+                font-size: 11px;
+                text-align: left;
+                padding-right: 10px;
+                min-width: 80px;
+                flex-shrink: 0;
+            }
+            /* 약제명 컬럼은 위아래로 정렬되게 조정 */
+            .pest-grid-table td[data-label="약제명 (성분)"] {
+                flex-direction: column;
+                align-items: flex-start;
+                text-align: left;
+                gap: 4px;
+            }
+            .pest-grid-table td[data-label="약제명 (성분)"]::before {
+                margin-bottom: 2px;
+            }
+            
+            /* 증빙 사진 가로 flex -> 세로 스택 */
+            .doc-photos-row {
+                flex-direction: column !important;
+                gap: 12px !important;
+            }
+            .doc-photo-box {
+                width: 100% !important;
+                flex: none !important;
+            }
+            
+            /* 갤러리 그리드 */
+            .share-gallery-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 10px !important;
+            }
+            
+            /* 도장 영역 세로 정렬 */
+            .stamp-row {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 16px;
+            }
+            .stamp-image-container {
+                align-self: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="share-container">
+        
+        <!-- 상단 액션 바 -->
+        <div class="share-actions-top">
+            <a href="index.html" class="btn-secondary"><i class="fa-solid fa-arrow-left"></i> 대시보드로 돌아가기</a>
+            <div>
+                <button type="button" class="btn-secondary" onclick="window.print()"><i class="fa-solid fa-print"></i> 처방전 인쇄</button>
+                <button type="button" class="btn-primary" id="btn-share-pdf"><i class="fa-solid fa-file-pdf"></i> PDF 다운로드</button>
+            </div>
+        </div>
+
+        <!-- 3. 실질 문서 레이아웃 (수목진단서 및 처방전) -->
+        <div class="document-sheet">
+            <div class="doc-header">
+                <h1>수목 진단서 및 처방전</h1>
+                <p>AITreeDoctor AI-Verified Digital Prescription</p>
+            </div>
+
+            <!-- 기본 정보 -->
+            <div class="doc-section-title">1. 의뢰인 및 소재지 기본 정보</div>
+            <table class="doc-table">
+                <tr>
+                    <th>진단 번호</th>
+                    <td id="doc-id">불러오는 중...</td>
+                    <th>의뢰인</th>
+                    <td id="doc-client">불러오는 중...</td>
+                </tr>
+                <tr>
+                    <th>수목 소재지</th>
+                    <td id="doc-address" colspan="3">불러오는 중...</td>
+                </tr>
+                <tr>
+                    <th>진단 일자</th>
+                    <td id="doc-date" colspan="3">불러오는 중...</td>
+                </tr>
+            </table>
+
+            <!-- 진단 결과 -->
+            <div class="doc-section-title">2. 수목 진단서 (수종, 수목의 상태 및 진단 결과)</div>
+            <table class="doc-table">
+                <tr>
+                    <th>대상 수종</th>
+                    <td id="doc-species">불러오는 중...</td>
+                    <th>진단 결과</th>
+                    <td id="doc-disease">불러오는 중...</td>
+                </tr>
+                <tr>
+                    <th>위험 등급</th>
+                    <td><span class="badge-history-sev" id="doc-severity">보통</span></td>
+                    <th>AI 정확도</th>
+                    <td id="doc-confidence">불러오는 중...</td>
+                </tr>
+                <tr>
+                    <th>수목의 상태 (잎)</th>
+                    <td id="doc-status-leaves" colspan="3">불러오는 중...</td>
+                </tr>
+                <tr>
+                    <th>수목의 상태 (줄기/수간)</th>
+                    <td id="doc-status-stems" colspan="3">불러오는 중...</td>
+                </tr>
+                <tr>
+                    <th>수목의 상태 (뿌리)</th>
+                    <td id="doc-status-roots" colspan="3">불러오는 중...</td>
+                </tr>
+                <tr>
+                    <th>긴급 조치 사항</th>
+                    <td id="doc-actions" colspan="3">불러오는 중...</td>
+                </tr>
+            </table>
+
+            <!-- 처방 약제 -->
+            <div class="doc-section-title">3. 처방전 (치료방법 및 처방 농약 내역)</div>
+            <table class="doc-table" style="margin-bottom: 10px;">
+                <tr>
+                    <th style="width: 150px;">처치 등 치료방법</th>
+                    <td id="doc-treatment-method">불러오는 중...</td>
+                </tr>
+            </table>
+            
+            <table class="pest-grid-table">
+                <thead>
+                    <tr>
+                        <th>농약의 명칭 (상표명 / 성분)</th>
+                        <th>용법 (희석 배수)</th>
+                        <th>용량 (사용량 및 방법)</th>
+                        <th>처방일수 (사용 기간)</th>
+                    </tr>
+                </thead>
+                <tbody id="doc-pesticides-tbody">
+                    <tr>
+                        <td colspan="4" class="text-center">등록 약제 로딩 중...</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- 현장 증빙 사진 (원경 및 근경) -->
+            <div class="doc-section-title">4. 현장 증빙 사진 (원경 및 근경)</div>
+            <div class="doc-photos-row" style="display: flex; gap: 15px; margin-bottom: 20px;">
+                <div class="doc-photo-box" style="flex: 1; border: 1px solid #CBD5E0; border-radius: 4px; padding: 10px; text-align: center;">
+                    <div style="font-size: 11px; font-weight: bold; color: var(--primary); margin-bottom: 6px;">[원경 사진 - 전체 수형]</div>
+                    <img id="doc-photo-far" src="camera_bg_clean.png" style="width: 100%; height: 180px; object-fit: cover; border-radius: 4px; background-color: #F7FAFC; cursor: pointer;">
+                </div>
+                <div class="doc-photo-box" style="flex: 1; border: 1px solid #CBD5E0; border-radius: 4px; padding: 10px; text-align: center;">
+                    <div style="font-size: 11px; font-weight: bold; color: var(--primary); margin-bottom: 6px;">[근경 사진 - 병증 부위 상세]</div>
+                    <img id="doc-photo-close" src="camera_bg_clean.png" style="width: 100%; height: 180px; object-fit: cover; border-radius: 4px; background-color: #F7FAFC; cursor: pointer;">
+                </div>
+            </div>
+
+            <!-- 추가 현장 사진 -->
+            <div class="share-gallery-section" id="share-gallery-section" style="display: none;">
+                <div class="doc-section-title">5. 추가 현장 사진 (현장 정밀 증빙)</div>
+                <div class="share-gallery-grid" id="share-gallery-grid">
+                    <!-- JavaScript에서 동적으로 삽입 -->
+                </div>
+            </div>
+
+            <!-- 서명 란 -->
+            <div class="stamp-row">
+                <div class="stamp-text">
+                    <p><strong>발행 나무병원:</strong> <span id="doc-hospital">아시아나무병원</span></p>
+                    <p><strong>나무의사 성명:</strong> <span id="doc-doctor-name">홍길동</span></p>
+                    <p><strong>면허 자격번호:</strong> <span id="doc-license">나무의사 제2026-12345호</span></p>
+                </div>
+                <div class="stamp-image-container">
+                    <img src="logo.png" alt="Hospital Stamp Background" class="stamp-img">
+                    <span class="stamp-official-seal">아시아나무병원<br>의사 직인</span>
+                </div>
+            </div>
+
+            <div class="doc-notice">
+                본 처방전은 「산림보호법」 및 「농약관리법」 규정에 근거하여,<br>
+                AITreeDoctor AI 정밀 교차 검증 시스템을 통해 합법적으로 등록된 약제만을 선별하여 발행되었습니다.
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const BACKEND_URL = window.location.origin;
+        let docData = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            // URL 파라미터에서 ID 추출
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get("id");
+            
+            if (!id) {
+                alert("진단 ID가 올바르지 않습니다.");
+                window.location.href = "index.html";
+                return;
+            }
+
+            loadPrescriptionDetails(id);
+        });
+
+        function loadPrescriptionDetails(id) {
+            // 1. 백엔드에서 데이터 조회 시도
+            fetch(`${BACKEND_URL}/api/v1/diagnose/${id}`)
+                .then(res => {
+                    if (!res.ok) throw new Error("서버에서 진단서를 찾을 수 없습니다.");
+                    return res.json();
+                })
+                .then(data => {
+                    // 서버 데이터 성공 시, 로컬스토리지에 저장된 사진들이 있는지 찾아 결합
+                    const history = JSON.parse(localStorage.getItem("aitreedoctor_mvp_history") || "[]");
+                    const localItem = history.find(item => item.id === id);
+                    if (localItem) {
+                        if (localItem.far_photo) data.far_photo = localItem.far_photo;
+                        if (localItem.close_photo) data.close_photo = localItem.close_photo;
+                        if (localItem.extra_photos) data.extra_photos = localItem.extra_photos;
+                    }
+                    docData = data;
+                    renderSheet(data);
+                })
+                .catch(err => {
+                    console.warn("백엔드 데이터 조회 실패, 로컬스토리지 대장을 확인합니다.", err);
+                    
+                    // 2. 로컬스토리지 폴백 조회
+                    const history = JSON.parse(localStorage.getItem("aitreedoctor_mvp_history") || "[]");
+                    const localItem = history.find(item => item.id === id);
+                    
+                    if (localItem) {
+                        // 로컬 이력에는 최소 정보만 있으므로 임시 모의 처방전 생성
+                        const fallbackData = generateMockPrescriptionFromLocal(localItem);
+                        docData = fallbackData;
+                        renderSheet(fallbackData);
+                    } else {
+                        // 3. 완전히 없는 경우 임의의 모의 데이터 빌드 (테스트용)
+                        alert("요청된 진단 ID를 대장에서 찾을 수 없어 모의 진단서를 출력합니다.");
+                        const mockData = {
+                            id: id,
+                            tree_species: "소나무",
+                            suspected_disease: "소나무재선충병",
+                            confidence_score: 0.94,
+                            severity_level: "심각",
+                            immediate_actions: [
+                                "피해 고사목 발견 즉시 관계 기관(산림청/지자체 녹지과) 신고",
+                                "감염 우려 수목은 즉시 벌채 후 훈증 또는 소각 처리",
+                                "주변 건전목에 예방 목적으로 아바멕틴 수간주사 처방 실시"
+                            ],
+                            pesticides: [
+                                {
+                                    product_name: "아바멕틴 액제",
+                                    active_ingredient: "아바멕틴 1.8%",
+                                    dilution_ratio: "원액 수간주사 (경급 cm당 1ml)",
+                                    safety_standard: "우화기 전 수간주사, 연 1회"
+                                }
+                            ],
+                            address: "경기도 광명시 시청로 20 (광명시청)"
+                        };
+                        docData = mockData;
+                        renderSheet(mockData);
+                    }
+                });
+        }
+
+        function generateMockPrescriptionFromLocal(localItem) {
+            // 로컬스토리지 아이템 기반 처방 매핑
+            let pesticides = [{
+                product_name: "등록 약제 없음",
+                active_ingredient: "해당 병해충용 약제는 처방 대장 조회가 필요합니다.",
+                dilution_ratio: "물리적 방제 권장",
+                safety_standard: "지자체 녹지과 가이드라인 준수"
+            }];
+
+            if (localItem.suspected_disease.includes("응애")) {
+                pesticides = [{
+                    product_name: "밀베멕틴 유제",
+                    active_ingredient: "밀베멕틴 1.0%",
+                    dilution_ratio: "물 20L당 20ml 희석 (1,000배액)",
+                    safety_standard: "발생 초엽 수관 살포, 10일 간격 2회 이내"
+                }];
+            } else if (localItem.suspected_disease.includes("재선충")) {
+                pesticides = [
+                    {
+                        product_name: "아바멕틴 액제",
+                        active_ingredient: "아바멕틴 1.8%",
+                        dilution_ratio: "원액 수간주사 (경급 cm당 1ml)",
+                        safety_standard: "우화기 전 수간주사, 연 1회"
+                    }
+                ];
+            } else if (localItem.suspected_disease.includes("구멍") || localItem.suspected_disease.includes("갈색")) {
+                pesticides = [{
+                    product_name: "티오파네이트메틸 수화물",
+                    active_ingredient: "티오파네이트메틸 70%",
+                    dilution_ratio: "물 20L당 20g 희석 (1,000배액)",
+                    safety_standard: "발엽기 가을 전 3회 이내"
+                }];
+            }
+
+            return {
+                id: localItem.id,
+                tree_species: localItem.tree_species,
+                suspected_disease: localItem.suspected_disease,
+                confidence_score: 0.9,
+                severity_level: localItem.severity_level,
+                immediate_actions: [
+                    "병증 확산 방지를 위한 정기 관찰 실시",
+                    "해당 처방 내역에 따라 즉각적인 약제 방제 적용"
+                ],
+                pesticides: pesticides,
+                address: localItem.address,
+                far_photo: localItem.far_photo || null,
+                close_photo: localItem.close_photo || null,
+                extra_photos: localItem.extra_photos || []
+            };
+        }
+
+        function formatTreatmentMethod(text) {
+            if (!text) return "해당 사항 없음";
+            
+            // Split text by brackets [Category]
+            const pattern = /(\[[^\]]+\])/g;
+            const parts = text.split(pattern);
+            
+            if (parts.length <= 1) {
+                return text.replace(/\n/g, "<br/>");
+            }
+            
+            let html = "";
+            let currentTitle = "";
+            
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i].trim();
+                if (!part) continue;
+                
+                if (part.startsWith("[") && part.endsWith("]")) {
+                    currentTitle = part.slice(1, -1);
+                } else {
+                    let desc = part.replace(/^[:\s\-•]+/, "").trim();
+                    // Split into sentences
+                    const sentences = desc.split(/\.(?:\s+|$)/);
+                    let formattedDesc = "";
+                    sentences.forEach(s => {
+                        let cleanS = s.trim().replace(/^[:\s\-•]+/, "").trim();
+                        if (cleanS) {
+                            formattedDesc += `<li style="margin-bottom: 6px; line-height: 1.5; list-style-type: disc;">${cleanS}.</li>`;
+                        }
+                    });
+                    
+                    if (formattedDesc) {
+                        formattedDesc = `<ul style="margin: 6px 0 0 0; padding-left: 20px; color: var(--text-main); font-weight: 500;">${formattedDesc}</ul>`;
+                    } else {
+                        formattedDesc = `<p style="margin: 6px 0 0 0; color: var(--text-main); font-weight: 500;">${desc}</p>`;
+                    }
+                    
+                    html += `
+                        <div class="treatment-group" style="margin-bottom: 16px;">
+                            <div class="treatment-group-title" style="margin-bottom: 4px;">
+                                <span style="background-color: var(--accent-light, #ecfdf5); color: var(--accent, #10b981); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block;">${currentTitle}</span>
+                            </div>
+                            ${formattedDesc}
+                        </div>
+                    `;
+                    currentTitle = "";
+                }
+            }
+            return html;
+        }
+
+        function renderSheet(data) {
+            document.getElementById("doc-id").innerText = data.id;
+            document.getElementById("doc-client").innerText = "수목 관리 책임자";
+            document.getElementById("doc-address").innerText = data.address || "소재지 미지정";
+            document.getElementById("doc-date").innerText = new Date().toLocaleDateString('ko-KR', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            });
+
+            document.getElementById("doc-species").innerText = data.tree_species;
+            document.getElementById("doc-disease").innerText = data.suspected_disease;
+            
+            const sevEl = document.getElementById("doc-severity");
+            sevEl.innerText = data.severity_level;
+            sevEl.className = `badge-history-sev ${data.severity_level}`;
+            
+            document.getElementById("doc-confidence").innerText = `${Math.round(data.confidence_score * 100)}%`;
+            
+            // 수목 상태 정보 바인딩
+            document.getElementById("doc-status-leaves").innerText = data.status_leaves || "양호함";
+            document.getElementById("doc-status-stems").innerText = data.status_stems || "양호함";
+            document.getElementById("doc-status-roots").innerText = data.status_roots || "양호함";
+            
+            // 처치 등 치료방법 바인딩 (가독성 개선 적용)
+            document.getElementById("doc-treatment-method").innerHTML = formatTreatmentMethod(data.treatment_method);
+
+            // 권장 조치 조립
+            document.getElementById("doc-actions").innerHTML = data.immediate_actions.map(act => `• ${act}`).join("<br/>");
+
+            // 처방 약제 렌더링
+            const tbody = document.getElementById("doc-pesticides-tbody");
+            tbody.innerHTML = "";
+            data.pesticides.forEach(p => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td data-label="약제명 (성분)"><strong>${p.product_name}</strong><br/><span style="font-size: 10px; color: var(--text-muted);">${p.active_ingredient}</span></td>
+                    <td data-label="희석 배수">${p.dilution_ratio}</td>
+                    <td data-label="사용 방법">${p.dosage || "수관 살포"}</td>
+                    <td data-label="사용 기간">${p.prescription_days || "7일"}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // 원경 및 근경 사진 렌더링
+            const farImg = document.getElementById("doc-photo-far");
+            const closeImg = document.getElementById("doc-photo-close");
+            if (farImg && closeImg) {
+                farImg.src = data.far_photo || "camera_bg_clean.png";
+                closeImg.src = data.close_photo || "camera_bg_clean.png";
+                
+                farImg.onclick = () => {
+                    if (data.far_photo) openImageModal(data.far_photo);
+                };
+                closeImg.onclick = () => {
+                    if (data.close_photo) openImageModal(data.close_photo);
+                };
+            }
+
+            // 추가 현장 사진 렌더링
+            const gallerySection = document.getElementById("share-gallery-section");
+            const galleryGrid = document.getElementById("share-gallery-grid");
+            
+            if (data.extra_photos && data.extra_photos.length > 0) {
+                gallerySection.style.display = "block";
+                galleryGrid.innerHTML = "";
+                
+                data.extra_photos.forEach(src => {
+                    const item = document.createElement("div");
+                    item.className = "share-gallery-item";
+                    item.onclick = () => openImageModal(src);
+                    item.innerHTML = `<img src="${src}" alt="Extra Field Photo">`;
+                    galleryGrid.appendChild(item);
+                });
+            } else {
+                gallerySection.style.display = "none";
+            }
+
+            // 설정 정보가 있으면 적용
+            const savedSettings = localStorage.getItem("aitreedoctor_mvp_settings");
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                document.getElementById("doc-hospital").innerText = settings.hospitalName;
+                document.getElementById("doc-doctor-name").innerText = settings.doctorName;
+                document.getElementById("doc-license").innerText = settings.licenseNumber;
+                document.querySelector(".stamp-official-seal").innerHTML = `${settings.hospitalName}<br>의사 직인`;
+            }
+
+            // PDF 다운로드 버튼 바인딩
+            document.getElementById("btn-share-pdf").onclick = () => {
+                const settings = JSON.parse(localStorage.getItem("aitreedoctor_mvp_settings") || "{}");
+                const reqBody = {
+                    diagnosis_id: data.id,
+                    doctor_name: settings.doctorName || "홍길동",
+                    license_number: settings.licenseNumber || "나무의사 제2026-12345호",
+                    hospital_name: settings.hospitalName || "아시아나무병원",
+                    address: data.address || "",
+                    far_photo: data.far_photo || null,
+                    close_photo: data.close_photo || null,
+                    extra_photos: data.extra_photos || []
+                };
+                
+                fetch(`${BACKEND_URL}/api/v1/prescriptions/generate`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(reqBody)
+                })
+                .then(res => res.json())
+                .then(pdfRes => {
+                    window.open(`${BACKEND_URL}${pdfRes.pdf_url}`, "_blank");
+                })
+                .catch(err => {
+                    alert("PDF 다운로드는 백엔드 서버(FastAPI)가 가동 중일 때 가능합니다.");
+                });
+            };
+        }
+
+        // 이미지 모달 열기/닫기 함수
+        function openImageModal(src) {
+            const modal = document.getElementById("image-modal");
+            const modalImg = document.getElementById("image-modal-img");
+            if (modal && modalImg) {
+                modalImg.src = src;
+                modal.classList.add("active");
+            }
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById("image-modal");
+            if (modal) {
+                modal.classList.remove("active");
+            }
+        }
+        
+        // ESC 키로 모달 닫기
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                closeImageModal();
+            }
+        });
+    </script>
+
+    <!-- 이미지 상세 보기 모달 -->
+    <div class="image-modal" id="image-modal">
+        <button class="image-modal-close" onclick="closeImageModal()">&times;</button>
+        <img class="image-modal-content" id="image-modal-img" src="" alt="Enlarged Image">
+    </div>
+</body>
+</html>

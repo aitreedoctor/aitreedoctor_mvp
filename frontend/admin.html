@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AITreeDoctor - 관리자 시스템 대시보드</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-body">
+    <div class="admin-wrapper">
+        <!-- 1. 사이드바 내비게이션 -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <img src="logo.png" alt="AITreeDoctor Logo" class="sidebar-logo">
+                <span class="sidebar-title">ADMIN PANEL</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="sidebar-item active" onclick="switchAdminTab('tab-admin-dashboard')">
+                    <i class="fa-solid fa-gauge"></i> 대시보드 홈
+                </button>
+                <button class="sidebar-item" onclick="switchAdminTab('tab-admin-models')">
+                    <i class="fa-solid fa-brain"></i> AI 모델 연구소
+                </button>
+                <button class="sidebar-item" onclick="switchAdminTab('tab-admin-sync')">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> 데이터 동기화 센터
+                </button>
+                <button class="sidebar-item" onclick="switchAdminTab('tab-admin-ncpms')">
+                    <i class="fa-solid fa-seedling"></i> NCPMS 연동 센터
+                </button>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="index.html" class="btn-back-to-app"><i class="fa-solid fa-mobile-screen-button"></i> 모바일 앱 보기</a>
+            </div>
+        </aside>
+
+        <!-- 2. 메인 컨텐츠 영역 -->
+        <main class="admin-main">
+            <!-- 메인 상단 헤더 -->
+            <header class="admin-header">
+                <div class="admin-header-left">
+                    <h2>시스템 관리 콘솔</h2>
+                </div>
+                <div class="admin-header-right">
+                    <span class="badge-active">● SYSTEM ONLINE</span>
+                </div>
+            </header>
+
+            <!-- 컨텐츠 스크롤 뷰 -->
+            <div class="admin-content-view">
+                
+                <!-- 탭 1: 대시보드 홈 -->
+                <div id="tab-admin-dashboard" class="admin-tab-content active">
+                    <!-- 시스템 주요 수치 현황판 -->
+                    <div class="admin-metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon blue"><i class="fa-solid fa-file-waveform"></i></div>
+                            <div class="metric-details">
+                                <span class="lbl">누적 진단 건수</span>
+                                <h3 id="stat-total-diagnoses">Loading...</h3>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-icon green"><i class="fa-solid fa-microchip"></i></div>
+                            <div class="metric-details">
+                                <span class="lbl">활성 AI 엔진</span>
+                                <h3 id="stat-active-engine">Loading...</h3>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-icon purple"><i class="fa-solid fa-flask"></i></div>
+                            <div class="metric-details">
+                                <span class="lbl">등록 농약 품목 수</span>
+                                <h3 id="stat-total-pesticides">Loading...</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 서버 상태 및 하드웨어 모니터 -->
+                    <div class="card admin-info-card" style="margin-top: 20px;">
+                        <h3 class="card-title"><i class="fa-solid fa-server"></i> 호스트 서버 및 환경 정보</h3>
+                        <p class="card-desc">현재 기동 중인 백엔드(FastAPI) 및 시스템 자원 정보입니다.</p>
+                        
+                        <div class="system-specs-list">
+                            <div class="spec-item">
+                                <span>서버 포트</span>
+                                <strong>8000 (HTTP)</strong>
+                            </div>
+                            <div class="spec-item">
+                                <span>DB 드라이버</span>
+                                <strong>SQLite3 (Local DB)</strong>
+                            </div>
+                            <div class="spec-item">
+                                <span>GPU 가속 디바이스</span>
+                                <strong>NVIDIA GeForce RTX 4070 (CUDA 12.1)</strong>
+                            </div>
+                            <div class="spec-item">
+                                <span>AI 엔진 프레임워크</span>
+                                <strong>PyTorch 2.2 + ONNX Runtime Edge</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 탭 2: AI 모델 연구소 -->
+                <div id="tab-admin-models" class="admin-tab-content hidden">
+                    <!-- 1. AI 엔진 제어 카드 -->
+                    <div class="card form-card">
+                        <h3 class="card-title"><i class="fa-solid fa-microchip"></i> AI 진단 엔진 활성화 설정</h3>
+                        <p class="card-desc">진단 시 적용할 AI 모델을 선택하십시오. 로컬 학습된 모델을 활성화하면 백엔드 로컬 분류 엔진이 가동됩니다.</p>
+                        
+                        <div class="form-group">
+                            <label>적용 중인 진단 엔진</label>
+                            <select id="active-model-select" class="form-control" onchange="switchActiveModel()">
+                                <option value="gemini-flash">Gemini 1.5 Flash (Cloud)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 2. AI-Hub 데이터셋 업로드 / 경로 연동 -->
+                    <div class="card form-card" style="margin-top: 15px;">
+                        <h3 class="card-title"><i class="fa-solid fa-folder-open"></i> AI-Hub 학습 데이터셋 로더</h3>
+                        <p class="card-desc">AI 허브에서 다운로드한 수목 질병/병해충 이미지 폴더 경로를 지정하거나 데이터 파일(.zip)을 업로드하세요.</p>
+                        
+                        <div class="form-group">
+                            <label>로컬 데이터셋 경로</label>
+                            <input type="text" id="dataset-path-input" value="D:\ai_hub_datasets\tree_diseases" placeholder="학습용 이미지 폴더의 절대 경로를 입력하세요.">
+                        </div>
+                        
+                        <!-- 드래그 앤 드롭 파일 로더 영역 -->
+                        <div class="dataset-drop-zone" id="dataset-drop-zone">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <p>데이터셋 파일(.zip) 드래그 앤 드롭</p>
+                            <span>또는 클릭하여 파일 브라우저 열기</span>
+                            <input type="file" id="dataset-file-input" accept=".zip" style="display: none;">
+                        </div>
+                        <div id="dataset-status-msg" class="text-hint" style="margin-top: 10px; font-weight: 500;"></div>
+                    </div>
+
+                    <!-- 3. 파인튜닝 실시간 대시보드 -->
+                    <div class="card form-card" style="margin-top: 15px;">
+                        <h3 class="card-title"><i class="fa-solid fa-chart-line"></i> 로컬 모델 파인튜닝 콘솔</h3>
+                        <p class="card-desc">선택된 데이터셋에 특화된 CNN(ResNet50) 전이학습(Transfer Learning)을 수행합니다.</p>
+                        
+                        <div class="form-row">
+                            <div class="form-group third">
+                                <label>Epochs (에폭)</label>
+                                <input type="number" id="train-epochs" value="5" min="1" max="50">
+                            </div>
+                            <div class="form-group third">
+                                <label>Learning Rate</label>
+                                <input type="number" id="train-lr" value="0.001" step="0.0001" min="0.0001" max="0.1">
+                            </div>
+                            <div class="form-group third">
+                                <label>Batch Size</label>
+                                <input type="number" id="train-batch-size" value="32" step="8" min="8" max="256">
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn-submit-diagnose" id="btn-start-training" onclick="startFineTuning()">
+                            <i class="fa-solid fa-play"></i> 파인튜닝 학습 시작
+                        </button>
+                        
+                        <!-- 실시간 학습 상태 패널 (기본 숨김) -->
+                        <div id="training-dashboard" class="training-dashboard-panel hidden" style="margin-top: 20px;">
+                            <div class="training-metrics-row">
+                                <div class="metric-box">
+                                    <span class="metric-label">현재 에폭 (Epoch)</span>
+                                    <span class="metric-value" id="metrics-epoch">0 / 0</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="metric-label">손실률 (Loss)</span>
+                                    <span class="metric-value text-neon-yellow" id="metrics-loss">0.0000</span>
+                                </div>
+                                <div class="metric-box">
+                                    <span class="metric-label">정확도 (Accuracy)</span>
+                                    <span class="metric-value text-neon-green" id="metrics-acc">0.00%</span>
+                                </div>
+                            </div>
+                            
+                            <!-- 프로그레스 바 -->
+                            <div class="progress-bar-container" style="margin: 15px 0;">
+                                <div class="progress-bar-fill" id="training-progress-fill" style="width: 0%;"></div>
+                            </div>
+                            <div style="text-align: right; font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 10px;" id="training-progress-text">전체 진행률: 0%</div>
+                            
+                            <!-- 실시간 학습 차트 영역 -->
+                            <div class="chart-container" style="position: relative; height: 180px; background-color: rgba(0, 0, 0, 0.2); border-radius: 8px; border: 1px solid var(--border); padding: 10px; margin-bottom: 15px;">
+                                <canvas id="training-chart" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                            
+                            <!-- 실시간 터미널 로그 모니터 -->
+                            <label style="font-size: 11px; font-weight: 700; color: var(--text-main); margin-bottom: 5px; display: block;"><i class="fa-solid fa-terminal"></i> 학습 프로세스 터미널 로그</label>
+                            <div class="terminal-log-console" id="terminal-console">
+                                <div class="log-line system">[SYSTEM] 학습 준비 완료...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 탭 3: 데이터 동기화 센터 -->
+                <div id="tab-admin-sync" class="admin-tab-content hidden">
+                    <!-- 공공 데이터 동기화 센터 -->
+                    <div class="card form-card">
+                        <h3 class="card-title"><i class="fa-solid fa-cloud-arrow-down"></i> 공공 데이터 동기화 센터</h3>
+                        <p class="card-desc">국가 농약안전정보시스템(OpenAPI)과 연동하여 로컬 처방 데이터베이스를 실시간 동기화합니다.</p>
+                        
+                        <div class="sync-status-list">
+                            <div class="sync-status-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid var(--border); margin-bottom: 10px;">
+                                <div class="sync-info">
+                                    <strong style="display: block; font-size: 12px; color: var(--text-main);">농약 고시 고수종 정보 (농촌진흥청)</strong>
+                                    <span id="sync-pesticide-date" class="sync-time" style="font-size: 10px; color: var(--text-muted);">실시간 API 호출 동기화 지원</span>
+                                </div>
+                                <button type="button" class="btn-sync-action" id="btn-sync-pesticides" onclick="syncPesticidesFromServer()" style="background-color: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-arrows-rotate"></i> 동기화 실행
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 탭 4: NCPMS 연동 센터 -->
+                <div id="tab-admin-ncpms" class="admin-tab-content hidden">
+                    <!-- 1. 실시간 예찰/예측 정보 보드 -->
+                    <div class="card form-card">
+                        <h3 class="card-title"><i class="fa-solid fa-bullhorn"></i> 전국 실시간 병해충 예찰 경보 및 예측 현황</h3>
+                        <p class="card-desc">NCPMS 예측 연계 모듈 및 산림청 예찰 정보를 실시간 조회합니다.</p>
+                        
+                        <div id="ncpms-forecast-container" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                            <!-- 예찰 카드가 동적으로 주입됩니다 -->
+                            <div style="font-size: 11px; color: var(--text-muted);">예찰 현황 로딩 중...</div>
+                        </div>
+                    </div>
+
+                    <!-- 2. NCPMS 검색 및 도감 수집기 -->
+                    <div class="card form-card" style="margin-top: 15px;">
+                        <h3 class="card-title"><i class="fa-solid fa-magnifying-glass"></i> NCPMS 수목 병해충 검색 & 도감 동기화</h3>
+                        <p class="card-desc">농촌진흥청 국가농작물병해충관리시스템 데이터베이스에서 질병 정보를 검색하고 로컬 DB에 수집합니다.</p>
+                        
+                        <div class="form-row" style="margin-top: 10px;">
+                            <div class="form-group half">
+                                <label>대상 수종(작물)명</label>
+                                <input type="text" id="ncpms-search-crop" value="소나무" placeholder="예: 소나무, 벚나무, 느티나무">
+                            </div>
+                            <div class="form-group half">
+                                <label>병해충명 (선택)</label>
+                                <input type="text" id="ncpms-search-sick" placeholder="예: 재선충, 응애, 구멍병">
+                            </div>
+                        </div>
+                        
+                        <button type="button" class="btn-submit-diagnose" id="btn-ncpms-search" onclick="searchNCPMSPests()">
+                            <i class="fa-solid fa-search"></i> NCPMS 실시간 검색
+                        </button>
+                        
+                        <!-- 검색 결과 목록 그리드 -->
+                        <div style="margin-top: 20px;">
+                            <label style="font-size: 11px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; display: block;"><i class="fa-solid fa-list"></i> 검색 결과 목록</label>
+                            <div id="ncpms-search-results" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                                <div style="font-size: 11px; color: var(--text-muted); grid-column: 1/-1; text-align: center; padding: 20px 0;">검색 키워드를 입력하고 검색을 진행하세요.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 선택 질병 상세 정보 및 동기화 콘솔 (결과 클릭 시 노출) -->
+                    <div class="card form-card hidden" id="ncpms-detail-console" style="margin-top: 15px; border: 1.5px solid var(--accent);">
+                        <h3 class="card-title" style="color: var(--accent);"><i class="fa-solid fa-circle-info"></i> NCPMS 상세 정보 & 로컬 DB 적재</h3>
+                        
+                        <div style="display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap;">
+                            <div id="ncpms-detail-img-container" style="width: 120px; height: 120px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; background-color: rgba(255,255,255,0.02); display: flex; align-items: center; justify-content: center;">
+                                <img id="ncpms-detail-img" src="" alt="Pest Image" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                                <i id="ncpms-detail-img-placeholder" class="fa-solid fa-image" style="font-size: 32px; color: var(--border);"></i>
+                            </div>
+                            
+                            <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px;">
+                                <h4 id="ncpms-detail-title" style="margin: 0; font-size: 14px; color: #ffffff; font-weight: 800;">질병명</h4>
+                                <div style="font-size: 11px; line-height: 1.5;">
+                                    <strong style="color: var(--accent);">발생 환경:</strong> <span id="ncpms-detail-env" style="color: var(--text-main);"></span>
+                                </div>
+                                <div style="font-size: 11px; line-height: 1.5;">
+                                    <strong style="color: var(--accent);">주요 병증상:</strong> <span id="ncpms-detail-symptoms" style="color: var(--text-main);"></span>
+                                </div>
+                                <div style="font-size: 11px; line-height: 1.5;">
+                                    <strong style="color: var(--accent);">권장 방제법:</strong> <span id="ncpms-detail-prevention" style="color: var(--text-main);"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="button" class="btn-submit-diagnose" id="btn-ncpms-sync" onclick="syncSelectedToLocal()" style="margin-top: 15px; background-color: var(--accent); color: white; border: none;">
+                            <i class="fa-solid fa-cloud-arrow-down"></i> 이 질병 정보를 로컬 DB에 동기화
+                        </button>
+                    </div>
+
+                    <!-- 4. 동기화 완료된 수목 질병 라이브러리 목록 -->
+                    <div class="card form-card" style="margin-top: 15px;">
+                        <h3 class="card-title"><i class="fa-solid fa-database"></i> 로컬 DB에 수집된 병해충 지식 라이브러리</h3>
+                        <p class="card-desc">NCPMS로부터 연동 및 동기화가 완료되어 진단 AI가 오프라인에서도 참고 가능한 로컬 리스트입니다.</p>
+                        
+                        <div class="table-responsive" style="margin-top: 10px;">
+                            <table class="pesticide-table" style="font-size: 11px;">
+                                <thead>
+                                    <tr>
+                                        <th>기주 수종</th>
+                                        <th>병해충 명칭</th>
+                                        <th>동기화 일시</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ncpms-local-tbody">
+                                    <tr>
+                                        <td colspan="3" class="text-center" style="color: var(--text-muted);">동기화된 지식 데이터가 없습니다.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
