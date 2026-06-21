@@ -6,3 +6,4 @@ reportlab
 requests
 pydantic
 aiohttp
+python-multipart
