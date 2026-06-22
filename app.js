@@ -4,6 +4,7 @@
 let selectedFarFile = null;
 let selectedCloseFile = null;
 let currentDiagnosisId = null;
+let currentDiagnosisData = null; // 현재 진단 전체 데이터 객체 보존용
 let selectedFarBase64 = null; // 원경 수목 사진 Base64 데이터
 let selectedCloseBase64 = null; // 근경 수목 사진 Base64 데이터
 let extraPhotos = []; // 추가 현장 사진 Base64 데이터 배열 (최대 3장)
@@ -34,6 +35,27 @@ document.addEventListener("DOMContentLoaded", () => {
             shell.classList.remove("hidden");
         }
     }, 2500);
+
+    // 수동 수정 버튼 및 폼 버튼 바인딩
+    const btnEditResults = document.getElementById("btn-edit-results");
+    if (btnEditResults) {
+        btnEditResults.addEventListener("click", openEditResultsForm);
+    }
+    const btnAddEditPesticide = document.getElementById("btn-add-edit-pesticide");
+    if (btnAddEditPesticide) {
+        btnAddEditPesticide.addEventListener("click", () => addPesticideEditRow());
+    }
+    const btnSaveEditResults = document.getElementById("btn-save-edit-results");
+    if (btnSaveEditResults) {
+        btnSaveEditResults.addEventListener("click", saveEditResults);
+    }
+    const btnCancelEditResults = document.getElementById("btn-cancel-edit-results");
+    if (btnCancelEditResults) {
+        btnCancelEditResults.addEventListener("click", () => {
+            document.getElementById("edit-results-container").classList.add("hidden");
+            document.getElementById("results-container").classList.remove("hidden");
+        });
+    }
 });
 
 
@@ -735,6 +757,7 @@ function renderDiagnosisResult(data) {
     
     // 글로벌 진단 ID 보존
     currentDiagnosisId = data.id;
+    currentDiagnosisData = data;
     
     // PDF 발급 및 공유 이벤트 바인딩
     const triggerPdfGeneration = () => {
@@ -1155,3 +1178,194 @@ document.addEventListener("DOMContentLoaded", () => {
 // ─────────────────────────────────────────────
 // AI 모델 학습 연구소와 공공 데이터 동기화 기능은 관리자 화면(admin.html/admin.js)으로 이관되었습니다.
 // ─────────────────────────────────────────────
+
+// 14. 진단 및 처방 결과 수동 수정 기능
+function openEditResultsForm() {
+    if (!currentDiagnosisData) {
+        // 글로벌 상태에 없다면 로컬스토리지에서 복원 시도
+        const history = JSON.parse(localStorage.getItem("aitreedoctor_mvp_history") || "[]");
+        const found = history.find(item => item.id === currentDiagnosisId);
+        if (found) {
+            currentDiagnosisData = found;
+        } else {
+            alert("수정할 진단 내역이 없습니다.");
+            return;
+        }
+    }
+    
+    document.getElementById("edit-tree-species").value = currentDiagnosisData.tree_species || "";
+    document.getElementById("edit-suspected-disease").value = currentDiagnosisData.suspected_disease || "";
+    document.getElementById("edit-severity-level").value = currentDiagnosisData.severity_level || "보통";
+    
+    document.getElementById("edit-status-leaves").value = currentDiagnosisData.status_leaves || "";
+    document.getElementById("edit-status-stems").value = currentDiagnosisData.status_stems || "";
+    document.getElementById("edit-status-roots").value = currentDiagnosisData.status_roots || "";
+    
+    // 조치 사항 (리스트 -> 한 줄씩 텍스트)
+    const actions = currentDiagnosisData.immediate_actions || [];
+    document.getElementById("edit-immediate-actions").value = actions.join("\n");
+    
+    document.getElementById("edit-treatment-method").value = currentDiagnosisData.treatment_method || "";
+    
+    // 농약 리스트 바인딩
+    const container = document.getElementById("edit-pesticides-list-container");
+    container.innerHTML = "";
+    
+    const pesticides = currentDiagnosisData.pesticides || [];
+    pesticides.forEach(p => {
+        addPesticideEditRow(p);
+    });
+    
+    // 폼카드와 결과 카드 보이기/숨기기
+    document.getElementById("results-container").classList.add("hidden");
+    document.getElementById("edit-results-container").classList.remove("hidden");
+}
+
+function addPesticideEditRow(p = {}) {
+    const container = document.getElementById("edit-pesticides-list-container");
+    const item = document.createElement("div");
+    item.className = "edit-pesticide-item";
+    item.style = "border: 1px solid var(--border); padding: 12px; border-radius: 8px; position: relative; background-color: rgba(255, 255, 255, 0.02); display: flex; flex-direction: column; gap: 8px;";
+    
+    item.innerHTML = `
+        <button type="button" class="btn-remove-pesticide" style="position: absolute; right: 8px; top: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 20px; font-weight: bold; padding: 0; line-height: 1;">&times;</button>
+        <div class="form-row" style="display: flex; gap: 8px; margin: 0;">
+            <div class="form-group half" style="flex: 1; margin: 0;">
+                <label style="font-size: 10.5px; margin-bottom: 3px; display: block;">농약 명칭 (상표/성분)</label>
+                <input type="text" class="p-product-name" value="${p.product_name || ''}" placeholder="상표명 입력" style="width: 100%; padding: 8px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text);">
+            </div>
+            <div class="form-group half" style="flex: 1; margin: 0;">
+                <label style="font-size: 10.5px; margin-bottom: 3px; display: block;">유효 성분</label>
+                <input type="text" class="p-active-ingredient" value="${p.active_ingredient || ''}" placeholder="성분명 입력" style="width: 100%; padding: 8px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text);">
+            </div>
+        </div>
+        <div class="form-row" style="display: flex; gap: 8px; margin: 0;">
+            <div class="form-group half" style="flex: 1; margin: 0;">
+                <label style="font-size: 10.5px; margin-bottom: 3px; display: block;">용법 (희석배수)</label>
+                <input type="text" class="p-dilution-ratio" value="${p.dilution_ratio || ''}" placeholder="희석배수 입력" style="width: 100%; padding: 8px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text);">
+            </div>
+            <div class="form-group half" style="flex: 1; margin: 0;">
+                <label style="font-size: 10.5px; margin-bottom: 3px; display: block;">안전기준 (사용적기)</label>
+                <input type="text" class="p-safety-standard" value="${p.safety_standard || ''}" placeholder="안전기준 입력" style="width: 100%; padding: 8px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text);">
+            </div>
+        </div>
+        <div class="form-row" style="display: flex; gap: 8px; margin: 0;">
+            <div class="form-group half" style="flex: 1; margin: 0;">
+                <label style="font-size: 10.5px; margin-bottom: 3px; display: block;">용량 (세부 방법)</label>
+                <input type="text" class="p-dosage" value="${p.dosage || '수관 살포'}" placeholder="용량 입력" style="width: 100%; padding: 8px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text);">
+            </div>
+            <div class="form-group half" style="flex: 1; margin: 0;">
+                <label style="font-size: 10.5px; margin-bottom: 3px; display: block;">처방일수 (기간)</label>
+                <input type="text" class="p-prescription-days" value="${p.prescription_days || '7일'}" placeholder="처방일수 입력" style="width: 100%; padding: 8px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text);">
+            </div>
+        </div>
+    `;
+    
+    item.querySelector(".btn-remove-pesticide").addEventListener("click", () => {
+        item.remove();
+    });
+    
+    container.appendChild(item);
+}
+
+function saveEditResults() {
+    if (!currentDiagnosisId) return;
+    
+    const treeSpecies = document.getElementById("edit-tree-species").value.trim();
+    const suspectedDisease = document.getElementById("edit-suspected-disease").value.trim();
+    const severityLevel = document.getElementById("edit-severity-level").value;
+    
+    const statusLeaves = document.getElementById("edit-status-leaves").value.trim();
+    const statusStems = document.getElementById("edit-status-stems").value.trim();
+    const statusRoots = document.getElementById("edit-status-roots").value.trim();
+    
+    const actionsText = document.getElementById("edit-immediate-actions").value;
+    const immediateActions = actionsText.split("\n").map(line => line.trim()).filter(line => line.length > 0);
+    
+    const treatmentMethod = document.getElementById("edit-treatment-method").value.trim();
+    
+    const pesticides = [];
+    const items = document.querySelectorAll(".edit-pesticide-item");
+    items.forEach(item => {
+        const productName = item.querySelector(".p-product-name").value.trim();
+        const activeIngredient = item.querySelector(".p-active-ingredient").value.trim();
+        const dilutionRatio = item.querySelector(".p-dilution-ratio").value.trim();
+        const safetyStandard = item.querySelector(".p-safety-standard").value.trim();
+        const dosage = item.querySelector(".p-dosage").value.trim();
+        const prescriptionDays = item.querySelector(".p-prescription-days").value.trim();
+        
+        if (productName) {
+            pesticides.push({
+                product_name: productName,
+                active_ingredient: activeIngredient,
+                dilution_ratio: dilutionRatio,
+                safety_standard: safetyStandard,
+                dosage: dosage,
+                prescription_days: prescriptionDays
+            });
+        }
+    });
+    
+    const reqBody = {
+        tree_species: treeSpecies,
+        suspected_disease: suspectedDisease,
+        severity_level: severityLevel,
+        status_leaves: statusLeaves,
+        status_stems: statusStems,
+        status_roots: statusRoots,
+        treatment_method: treatmentMethod,
+        immediate_actions: immediateActions,
+        pesticides: pesticides
+    };
+    
+    // API 호출 (PUT)
+    fetch(`${BACKEND_URL}/api/v1/diagnose/${currentDiagnosisId}`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(reqBody)
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("서버 진단 데이터 업데이트 실패");
+        return res.json();
+    })
+    .then(updatedData => {
+        currentDiagnosisData = updatedData;
+        
+        // 로컬스토리지 이력 업데이트
+        let history = JSON.parse(localStorage.getItem("aitreedoctor_mvp_history") || "[]");
+        history = history.map(item => {
+            if (item.id === currentDiagnosisId) {
+                return {
+                    ...item,
+                    tree_species: updatedData.tree_species,
+                    suspected_disease: updatedData.suspected_disease,
+                    severity_level: updatedData.severity_level,
+                    status_leaves: updatedData.status_leaves,
+                    status_stems: updatedData.status_stems,
+                    status_roots: updatedData.status_roots,
+                    treatment_method: updatedData.treatment_method,
+                    immediate_actions: updatedData.immediate_actions,
+                    pesticides: updatedData.pesticides
+                };
+            }
+            return item;
+        });
+        localStorage.setItem("aitreedoctor_mvp_history", JSON.stringify(history));
+        
+        // UI 리렌더링
+        renderDiagnosisResult(updatedData);
+        
+        // 화면 전환
+        document.getElementById("edit-results-container").classList.add("hidden");
+        document.getElementById("results-container").classList.remove("hidden");
+        
+        alert("진단 및 처방 정보가 성공적으로 수정되었습니다. 다시 PDF를 발행하실 수 있습니다.");
+    })
+    .catch(err => {
+        console.error("수정본 저장 에러", err);
+        alert(`저장 중 오류가 발생했습니다: ${err.message}`);
+    });
+}
+

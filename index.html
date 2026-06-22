@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AITreeDoctor - 모바일 나무병원 워크스페이스</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 카카오 우편번호 서비스 API 로드 -->
+    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+</head>
+<body>
+    <!-- 스마트폰 액자 모양 시뮬레이터 (데스크톱에서는 폰 형태로, 모바일에서는 풀스크린) -->
+    <div class="app-container">
+        <!-- 1. 스플래시 화면 -->
+        <div id="screen-splash" class="screen active">
+            <div class="splash-content">
+                <div class="logo-wrapper">
+                    <img src="logo.png" alt="AITreeDoctor Logo" class="brand-logo">
+                </div>
+                <div class="loading-container">
+                    <div class="loading-bar"></div>
+                    <p class="loading-text">INITIALIZING AI SCANNER</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 메인 앱 쉘 -->
+        <div id="app-shell" class="hidden">
+            <!-- 상단 헤더 -->
+            <header class="app-header">
+                <div class="header-left">
+                    <img src="logo.png" alt="AITreeDoctor Logo" class="header-brand-logo">
+                    <span class="header-title">AITreeDoctor</span>
+                </div>
+                <div class="header-right">
+                    <span class="badge-active">● AI ACTIVE</span>
+                </div>
+            </header>
+
+            <!-- 컨텐츠 영역 -->
+            <main class="app-content">
+                
+                <!-- 탭 1: AI 진단 & 처방 -->
+                <div id="tab-diagnose" class="tab-content active">
+                    <!-- 1단계: 사진 등록 카드 -->
+                    <div class="card upload-card" id="upload-card">
+                        <h3 class="card-title"><i class="fa-solid fa-camera-retro"></i> AI 수목 스캔 및 사진 등록</h3>
+                        <p class="card-desc">정밀 진단을 위해 수목의 전체 전경(원경)과 질병 환부(근경) 사진 2장을 등록해 주세요.</p>
+                        
+                        <div class="upload-zones-container">
+                            <!-- 1. 원경 사진 등록 구역 -->
+                            <div class="upload-group">
+                                <label class="upload-label"><i class="fa-solid fa-tree"></i> 원경 사진 (전체 수형)</label>
+                                <div class="upload-zone" id="upload-zone-far">
+                                    <input type="file" id="file-input-far" accept="image/*" style="display: none;">
+                                    <div class="upload-placeholder" id="upload-placeholder-far">
+                                        <i class="fa-solid fa-image"></i>
+                                        <p>원경 등록</p>
+                                        <span>(전경/수형)</span>
+                                    </div>
+                                    <div class="upload-preview hidden" id="upload-preview-far">
+                                        <img src="" alt="Far Preview" id="preview-img-far">
+                                        <button type="button" class="btn-remove-img" id="btn-remove-img-far"><i class="fa-solid fa-xmark"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 2. 근경 사진 등록 구역 -->
+                            <div class="upload-group">
+                                <label class="upload-label"><i class="fa-solid fa-expand"></i> 근경 사진 (환부 상세)</label>
+                                <div class="upload-zone" id="upload-zone-close">
+                                    <input type="file" id="file-input-close" accept="image/*" style="display: none;">
+                                    <div class="upload-placeholder" id="upload-placeholder-close">
+                                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                        <p>근경 등록</p>
+                                        <span>(잎/줄기/환부)</span>
+                                    </div>
+                                    <div class="upload-preview hidden" id="upload-preview-close">
+                                        <img src="" alt="Close Preview" id="preview-img-close">
+                                        <button type="button" class="btn-remove-img" id="btn-remove-img-close"><i class="fa-solid fa-xmark"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI 분석 스캐너 시뮬레이션 영역 -->
+                    <div class="card scanner-card idle" id="scanner-container">
+                        <div class="scanner-view-wrapper">
+                            <div class="scanner-view">
+                                <div class="scanner-bg-split">
+                                    <div class="split-pane left">
+                                        <img src="bg_far_view.png" alt="Far View" class="scanner-bg" id="scanner-bg-far">
+                                        <div class="split-label">FAR_VIEW</div>
+                                    </div>
+                                    <div class="split-pane right">
+                                        <img src="bg_close_view.png" alt="Close View" class="scanner-bg" id="scanner-bg-close">
+                                        <div class="split-label">CLOSE_VIEW</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 실시간 수목 계측 HUD 오버레이 -->
+                                <div class="hud-layer hidden" id="hud-layer">
+                                    <div class="hud-box top-left">
+                                        <span>GPS LAT: <strong id="hud-lat">37.4782</strong></span><br>
+                                        <span>GPS LNG: <strong id="hud-lng">126.8643</strong></span>
+                                    </div>
+                                    <div class="hud-box top-right">
+                                        <span>TEMP: <strong id="hud-temp">24.5°C</strong></span><br>
+                                        <span>HUMID: <strong id="hud-humid">58%</strong></span>
+                                    </div>
+                                    <div class="hud-box bottom-left">
+                                        <span>CHL INDEX: <strong id="hud-chl">74.2</strong></span><br>
+                                        <span>DBH EST: <strong id="hud-dbh">18.2 cm</strong></span>
+                                    </div>
+                                    <div class="hud-box bottom-right">
+                                        <span>STATE: <strong class="text-neon" id="hud-state">SCANNING</strong></span>
+                                    </div>
+                                    <div class="scanning-laser"></div>
+                                    <div class="hud-target-marker" style="top: 40%; left: 50%;">
+                                        <div class="pulse-ring"></div>
+                                        <span class="marker-label">PATHOGEN_SUSPECTED</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 로딩 인디케이터 -->
+                                <div class="scan-overlay-message hidden" id="scan-overlay-message">
+                                    <div class="spinner"></div>
+                                    <h4 id="scan-progress-title">AI 분석 시작 중...</h4>
+                                    <p id="scan-progress-desc">스펙트럼 정보를 연산합니다.</p>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="scanner-status-text" id="scanner-status-text">
+                                <i class="fa-solid fa-circle-info"></i> 원경과 근경 사진 2장을 모두 등록하면 실시간 AI 스캔이 자동 가동됩니다.
+                            </div>
+                            
+                            <!-- 추가 현장 사진 등록 구역 (진단 완료 후 노출) -->
+                            <div class="additional-photos-section hidden" id="additional-photos-section">
+                                <p class="section-subtitle-mini"><i class="fa-solid fa-images"></i> 추가 현장 사진 등록 (최대 3장)</p>
+                                <div class="additional-photos-grid" id="additional-photos-grid">
+                                    <div class="add-photo-btn-wrapper" id="add-photo-btn-wrapper">
+                                        <button type="button" class="btn-add-extra-photo" onclick="triggerExtraFileInput()">
+                                            <i class="fa-solid fa-plus"></i>
+                                        </button>
+                                        <input type="file" id="extra-file-input" accept="image/*" multiple style="display: none;" onchange="handleExtraFiles(this)">
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-action" id="btn-re-diagnose" style="width: 100%; margin-top: 15px; background-color: var(--accent); color: white; border: none; font-weight: 600; padding: 12px; border-radius: 8px; display: none;">
+                                    <i class="fa-solid fa-rotate-right"></i> 추가 사진 반영하여 AI 정밀 재진단
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- AI 진단 결과 카드 (기본 숨김) -->
+                    <div class="card results-card hidden" id="results-container">
+                        <!-- 파트 1: 진단서 -->
+                        <div class="legal-doc-section">
+                            <h3 class="legal-section-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                <span><i class="fa-solid fa-file-waveform"></i> 수목 진단서</span>
+                                <button type="button" class="btn-action" id="btn-edit-results" style="margin: 0; padding: 6px 12px; font-size: 11.5px; background-color: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                    <i class="fa-solid fa-pen-to-square"></i> 진단/처방 직접 수정
+                                </button>
+                            </h3>
+                            
+                            <div class="results-header">
+                                <span class="badge-severity" id="res-severity">심각</span>
+                                <h2 id="res-disease">소나무 - 소나무재선충병 (의심)</h2>
+                                <p>AI 정확도: <strong id="res-confidence">94%</strong></p>
+                            </div>
+                            
+                            <!-- 수목의 상태 (잎/줄기/뿌리) -->
+                            <div class="tree-status-container">
+                                <div class="tree-status-item">
+                                    <div class="status-icon-badge leaf"><i class="fa-solid fa-leaf"></i> 잎의 상태</div>
+                                    <div class="status-desc-text" id="res-status-leaves">상태 정보 로딩 중...</div>
+                                </div>
+                                <div class="tree-status-item">
+                                    <div class="status-icon-badge stem"><i class="fa-solid fa-tree"></i> 줄기/수간</div>
+                                    <div class="status-desc-text" id="res-status-stems">상태 정보 로딩 중...</div>
+                                </div>
+                                <div class="tree-status-item">
+                                    <div class="status-icon-badge root"><i class="fa-solid fa-seedling"></i> 뿌리/배수</div>
+                                    <div class="status-desc-text" id="res-status-roots">상태 정보 로딩 중...</div>
+                                </div>
+                            </div>
+
+                            <div class="results-section">
+                                <h4><i class="fa-solid fa-triangle-exclamation"></i> 긴급 권장 조치 사항</h4>
+                                <ul id="res-actions-list">
+                                    <li>감염 우려 수목 주변의 격리 및 예방 조치 진행.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="legal-separator"></div>
+
+                        <!-- 파트 2: 처방전 -->
+                        <div class="legal-doc-section">
+                            <h3 class="legal-section-title"><i class="fa-solid fa-prescription-bottle-medical"></i> 수목 처방전</h3>
+                            
+                            <div class="results-section">
+                                <h4><i class="fa-solid fa-hand-holding-medical"></i> 처치 등 치료방법</h4>
+                                <div class="treatment-desc-box" id="res-treatment-method">
+                                    치료 방법 로딩 중...
+                                </div>
+                            </div>
+
+                            <div class="results-section">
+                                <h4><i class="fa-solid fa-tablets"></i> 처방 농약 내역 <span class="text-hint">※ 명칭, 용법, 용량 및 처방일수 기재</span></h4>
+                                <div class="table-responsive">
+                                    <table class="pesticide-table">
+                                        <thead>
+                                            <tr>
+                                                <th>농약의 명칭 (상표/성분)</th>
+                                                <th>용법 (희석배수)</th>
+                                                <th>용량 (사용방법)</th>
+                                                <th>처방일수 (기간)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="res-pesticide-tbody">
+                                            <tr>
+                                                <td colspan="4" class="text-center">등록 약제 로딩 중...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 이용 안내 가이드 (일반 vs 나무의사) -->
+                        <div class="user-role-guide-banner" style="margin-top: 15px; padding: 12px; background-color: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 10.5px; color: var(--text-muted); line-height: 1.6;">
+                            <p style="margin: 0 0 6px 0; font-weight: 800; color: var(--accent); display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-circle-info"></i> 디지털 나무병원 권한 안내
+                            </p>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div>• <strong>일반 이용자</strong>: 수목 병해 진단 명칭 및 처방 농약 내역 조회 가능</div>
+                                <div>• <strong>나무의사 회원</strong>: 산림청 법정 서식의 <strong>공식 진단서 및 처방전 PDF 발급·다운로드</strong> 가능</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 진단 결과 수동 편집/수정 카드 (기본 숨김) -->
+                    <div class="card form-card hidden" id="edit-results-container">
+                        <h3 class="card-title"><i class="fa-solid fa-pen-to-square"></i> 진단 및 처방 정보 수동 수정</h3>
+                        <p class="card-desc">AI 진단이 부정확하거나 변경이 필요한 경우, 아래 정보를 수정하여 공식 진단서 및 처방전 PDF에 반영할 수 있습니다.</p>
+                        
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label>수종명</label>
+                                <input type="text" id="edit-tree-species" placeholder="수종명을 입력하세요 (예: 소나무, 향나무)">
+                            </div>
+                            <div class="form-group half">
+                                <label>병해충명 (의심 질병)</label>
+                                <input type="text" id="edit-suspected-disease" placeholder="병해충명을 입력하세요 (예: 소나무재선충병, 배나무 적성병)">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>심각도 수준</label>
+                                <select id="edit-severity-level">
+                                    <option value="경미">경미</option>
+                                    <option value="보통">보통</option>
+                                    <option value="심각">심각</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>잎의 상태 설명</label>
+                            <textarea id="edit-status-leaves" rows="2" placeholder="잎의 갈색 반점, 탈엽 등 상태 설명" style="width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; background-color: var(--input-bg); color: var(--text); font-family: inherit; resize: vertical;"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>줄기/수간 상태 설명</label>
+                            <textarea id="edit-status-stems" rows="2" placeholder="수 Bark 부위 괴사, 갈라짐 등 상태 설명" style="width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; background-color: var(--input-bg); color: var(--text); font-family: inherit; resize: vertical;"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>뿌리/배수 상태 설명</label>
+                            <textarea id="edit-status-roots" rows="2" placeholder="근원부 배수 불량, 뿌리 썩음 등 상태 설명" style="width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; background-color: var(--input-bg); color: var(--text); font-family: inherit; resize: vertical;"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>긴급 권장 조치 사항 (줄바꿈으로 구분)</label>
+                            <textarea id="edit-immediate-actions" rows="3" placeholder="피해목 격리 조치 등 (한 줄에 하나씩 입력)" style="width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; background-color: var(--input-bg); color: var(--text); font-family: inherit; resize: vertical;"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>처치 등 치료방법 설명</label>
+                            <textarea id="edit-treatment-method" rows="3" placeholder="화학적 방제 및 생태학적 처방 설명" style="width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; background-color: var(--input-bg); color: var(--text); font-family: inherit; resize: vertical;"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span>처방 농약 내역</span>
+                                <button type="button" class="btn-action" id="btn-add-edit-pesticide" style="margin: 0; padding: 4px 10px; font-size: 11px; background-color: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-plus"></i> 농약 추가</button>
+                            </label>
+                            <div id="edit-pesticides-list-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                                <!-- 동적으로 추가되는 농약 입력 항목 -->
+                            </div>
+                        </div>
+
+                        <div class="address-btn-row" style="margin-top: 20px; display: flex; gap: 10px;">
+                            <button type="button" class="btn-action" id="btn-save-edit-results" style="flex: 1; padding: 12px; background-color: var(--accent); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;"><i class="fa-solid fa-check"></i> 저장 완료</button>
+                            <button type="button" class="btn-action" id="btn-cancel-edit-results" style="flex: 1; padding: 12px; background-color: #6b7280; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;"><i class="fa-solid fa-xmark"></i> 취소</button>
+                        </div>
+                    </div>
+
+                    <!-- 2단계: 공식 진단서 발급 세부 입력 폼 (진단 완료 후 노출) -->
+                    <div class="card form-card hidden" id="report-form-card">
+                        <h3 class="card-title"><i class="fa-solid fa-file-signature"></i> 공식 진단서 발급 추가 정보</h3>
+                        <p class="card-desc">아래 행정/스펙 정보를 입력하시면 최종 법정 진단서 및 처방전 PDF에 병기됩니다.</p>
+                        
+                        <!-- 소재지 주소 및 GPS -->
+                        <div class="form-group">
+                            <label>수목 소재지 주소</label>
+                            <div class="address-input-group">
+                                <input type="text" id="address-input" placeholder="도로명/지번 주소를 입력하세요.">
+                                <div class="address-btn-row">
+                                    <button type="button" class="btn-action" onclick="requestGPS()"><i class="fa-solid fa-location-crosshairs"></i> GPS</button>
+                                    <button type="button" class="btn-action" onclick="searchAddressWithKakao()"><i class="fa-solid fa-magnifying-glass"></i> 주소검색</button>
+                                </div>
+                            </div>
+                            <div class="location-status hidden" id="location-status-banner">
+                                <i class="fa-solid fa-info-circle"></i> <span id="location-status-text"></span>
+                            </div>
+                        </div>
+
+                        <!-- 수종 및 추가 스펙 정보 -->
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label>수종명</label>
+                                <input type="text" id="tree-species-input" value="소나무">
+                            </div>
+                            <div class="form-group half">
+                                <label>의뢰인명</label>
+                                <input type="text" id="client-name-input" value="김민수">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group half">
+                                <label>수고 (m)</label>
+                                <input type="number" id="tree-height-input" value="6.5" step="0.1">
+                            </div>
+                            <div class="form-group half">
+                                <label>흉고직경 (DBH, cm)</label>
+                                <input type="number" id="tree-dbh-input" value="18.2" step="0.1">
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn-submit-diagnose" id="btn-generate-pdf-final">
+                            <i class="fa-solid fa-file-pdf"></i> 법정 진단서/처방전 PDF 최종 발행
+                        </button>
+                        
+                        <!-- 모바일 최적화 처방 공유 채널 아이콘 그룹 -->
+                        <div class="share-channels-wrapper">
+                            <p class="share-channels-title">진단 결과 처방전 공유</p>
+                            <div class="share-channels-grid">
+                                <button type="button" class="share-channel-btn kakao" onclick="shareViaKakao()">
+                                    <div class="channel-icon-circle"><i class="fa-solid fa-comment"></i></div>
+                                    <span>카카오톡</span>
+                                </button>
+                                <button type="button" class="share-channel-btn sms" onclick="shareViaSMS()">
+                                    <div class="channel-icon-circle"><i class="fa-solid fa-message"></i></div>
+                                    <span>문자 전송</span>
+                                </button>
+                                <button type="button" class="share-channel-btn link" onclick="copyShareLink()">
+                                    <div class="channel-icon-circle"><i class="fa-solid fa-link"></i></div>
+                                    <span>링크 복사</span>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 탭 2: 진단 이력 대장 -->
+                <div id="tab-history" class="tab-content hidden">
+                    <div class="card table-card">
+                        <div class="table-header-row">
+                            <h3 class="card-title"><i class="fa-solid fa-list-check"></i> 수목 진단 및 처방 대장</h3>
+                            <button type="button" class="btn-sync-mini" onclick="syncPesticidesFromServer()"><i class="fa-solid fa-arrows-rotate"></i> 동기화</button>
+                        </div>
+                        
+                        <!-- 모바일 최적화 이력 리스트 (테이블을 카드 리스트로 간소화) -->
+                        <div class="history-list" id="history-list-container">
+                            <div class="no-history-text">진단 내역이 없습니다.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 탭 3: 내 정보 설정 -->
+                <div id="tab-settings" class="tab-content hidden">
+                    <div class="card form-card">
+                        <h3 class="card-title"><i class="fa-solid fa-id-card"></i> 회원 등급 및 자격 설정</h3>
+                        <p class="card-desc">사용자 권한에 따라 사용 가능한 기능이 다르게 나타납니다.</p>
+                        
+                        <div class="form-group">
+                            <label>회원 유형 (권한)</label>
+                            <select id="setting-user-role" onchange="toggleRoleUI()" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background-color: var(--bg-main); color: var(--text-main); font-weight: 600; outline: none; margin-bottom: 5px;">
+                                <option value="doctor">나무의사 회원 (공식 진단서/처방전 발급 가능)</option>
+                                <option value="general" selected>일반 이용자 (처방 열람만 가능)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>나무병원 상호</label>
+                            <input type="text" id="setting-hospital-name" value="아시아나무병원">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>나무의사 면허 번호</label>
+                            <input type="text" id="setting-license-number" value="나무의사 제2026-12345호">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>나무의사 성명</label>
+                            <input type="text" id="setting-doctor-name" value="홍길동">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>병원 소재지 주소</label>
+                            <input type="text" id="setting-hospital-address" value="서울특별시 서초구 서초대로 123">
+                        </div>
+
+                        <button type="button" class="btn-submit-diagnose" onclick="saveSettings()" style="margin-bottom: 0;">
+                            <i class="fa-solid fa-floppy-disk"></i> 설정 정보 저장
+                        </button>
+                        
+                        <!-- 시스템 관리자 바로가기 게이트웨이 -->
+                        <div class="settings-admin-gateway" style="margin-top: 25px; border-top: 1px dashed var(--border); padding-top: 20px; text-align: center;">
+                            <p style="font-size: 10px; color: var(--text-muted); margin-bottom: 8px;"><i class="fa-solid fa-gears"></i> 시스템 관리자이십니까?</p>
+                            <a href="admin.html" target="_blank" class="btn-action" style="display: inline-flex; align-items: center; justify-content: center; width: 100%; text-decoration: none; background-color: #1e293b; color: #f8fafc; border: 1px solid #334155; font-size: 11px; font-weight: 600; padding: 10px; border-radius: 6px; gap: 8px;">
+                                <i class="fa-solid fa-server"></i> 관리자 대시보드 열기
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+
+            <!-- 하단 탭 내비게이션 바 -->
+            <nav class="app-nav">
+                <button class="nav-item active" onclick="switchSection('tab-diagnose')">
+                    <i class="fa-solid fa-laptop-medical"></i>
+                    <span>AI 진단</span>
+                </button>
+                <button class="nav-item" onclick="switchSection('tab-history')">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>진단 이력</span>
+                </button>
+                <button class="nav-item" onclick="switchSection('tab-settings')">
+                    <i class="fa-solid fa-user-doctor"></i>
+                    <span>의사 설정</span>
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
