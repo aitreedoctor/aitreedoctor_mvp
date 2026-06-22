@@ -269,9 +269,17 @@ async def sync_pesticides():
     cancel_api_key = os.getenv("NONGSA_CANCEL_API_KEY") or os.getenv("NONGSA_API_KEY")
 
     if not reg_api_key and not cancel_api_key:
-        raise HTTPException(
-            status_code=400,
-            detail="NONGSA_API_KEY 또는 NONGSA_CANCEL_API_KEY가 .env에 설정되지 않았습니다."
+        # API 인증키가 없을 경우 로컬 fallback 데이터를 적재하고 성공(fallback 상태) 처리
+        fallback_count = perform_pesticide_sync_fallback()
+        return SyncResponse(
+            status="fallback",
+            message=(
+                f"농약안전정보시스템 OpenAPI 인증키가 .env에 설정되지 않았습니다. "
+                f"로컬 기본 수목약제 고시 데이터 {fallback_count}건으로 동기화를 완료했습니다."
+            ),
+            synchronized_count=fallback_count,
+            cancelled_count=0,
+            details="OpenAPI 인증키 미설정으로 인한 로컬 폴백 데이터 적재."
         )
 
     try:
@@ -303,11 +311,17 @@ async def sync_pesticides():
         )
 
     except Exception as e:
-        # 전체 실패 시 Fallback 데이터라도 보완
+        # API 호출 또는 연동 중 전체 실패 시 Fallback 데이터 보완 후 정상 응답 반환
         fallback_count = perform_pesticide_sync_fallback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"동기화 오류: {str(e)}. 기본 데이터 {fallback_count}건으로 보완 완료."
+        return SyncResponse(
+            status="fallback",
+            message=(
+                f"농약안전정보시스템 API 호출 또는 데이터 처리 중 오류가 발생했습니다 ({str(e)}). "
+                f"로컬 기본 수목약제 고시 데이터 {fallback_count}건으로 동기화를 완료했습니다."
+            ),
+            synchronized_count=fallback_count,
+            cancelled_count=0,
+            details=f"동기화 오류: {str(e)}"
         )
 
 

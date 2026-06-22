@@ -914,13 +914,23 @@ function syncPesticidesFromServer() {
     fetch(`${BACKEND_URL}/api/v1/sync/pesticides`, {
         method: "POST"
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(errData => {
+                throw new Error(errData.detail || errData.message || "서버 에러가 발생했습니다.");
+            }).catch(() => {
+                throw new Error(`HTTP 에러: ${res.status}`);
+            });
+        }
+        return res.json();
+    })
     .then(data => {
-        alert(`동기화 성공!\n상태: ${data.status}\n메시지: ${data.message}\n신규 적재 항목: ${data.synchronized_count}건`);
+        const title = (data.status === "success") ? "동기화 완료!" : "동기화 완료 (로컬 대체)!";
+        alert(`${title}\n상태: ${data.status}\n메시지: ${data.message}\n신규 적재 항목: ${data.synchronized_count}건`);
     })
     .catch(err => {
         console.error("동기화 중 오류 발생", err);
-        alert("농약 데이터 동기화는 백엔드 서버(FastAPI)가 기동 중이어야 합니다.");
+        alert(`동기화 실패!\n사유: ${err.message}`);
     });
 }
 
