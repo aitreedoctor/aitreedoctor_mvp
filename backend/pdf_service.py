@@ -67,8 +67,39 @@ try:
                 FONT_NAME = "Malgun"
                 pdfmetrics.registerFont(TTFont("Malgun-Bold", alt_path))
                 break
+        
+        # 리눅스/클라우드(Render) 환경을 위한 나눔고딕(NanumGothic) 폰트 동적 다운로드 및 등록
+        if FONT_NAME == "Helvetica":
+            import urllib.request
+            font_dir = os.path.join(os.path.dirname(__file__), "static", "fonts")
+            os.makedirs(font_dir, exist_ok=True)
+            
+            nanum_path = os.path.join(font_dir, "NanumGothic.ttf")
+            nanum_bold_path = os.path.join(font_dir, "NanumGothic-Bold.ttf")
+            
+            # 나눔고딕 Regular 다운로드
+            if not os.path.exists(nanum_path):
+                print("[PDF Service] Downloading NanumGothic-Regular from Google Fonts...")
+                urllib.request.urlretrieve(
+                    "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf",
+                    nanum_path
+                )
+            
+            # 나눔고딕 Bold 다운로드
+            if not os.path.exists(nanum_bold_path):
+                print("[PDF Service] Downloading NanumGothic-Bold from Google Fonts...")
+                urllib.request.urlretrieve(
+                    "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Bold.ttf",
+                    nanum_bold_path
+                )
+                
+            pdfmetrics.registerFont(TTFont("Malgun", nanum_path))
+            pdfmetrics.registerFont(TTFont("Malgun-Bold", nanum_bold_path))
+            FONT_NAME = "Malgun"
+            print("[PDF Service] NanumGothic fonts registered successfully as 'Malgun' fallback.")
+            
 except Exception as e:
-    print(f"[PDF Service] 폰트 로드 중 오류 발생, 기본 폰트로 대체합니다: {e}")
+    print(f"[PDF Service] 폰트 로드 및 다운로드 중 오류 발생, 기본 폰트로 대체합니다: {e}")
 
 class PDFGenerateRequest(BaseModel):
     diagnosis_id: str
